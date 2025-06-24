@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sistem Absensi RFID</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h2 { color: #333; }
+    label { display: block; margin-top: 10px; }
+    input, select {
+      width: 300px;
+      padding: 7px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #45a049; }
+    #absenForm, #registerForm, #rekapTable {
+      display: none;
+      margin-top: 20px;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #menu button { margin-right: 10px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #fff;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th { background-color: #f2f2f2; }
+    .info {
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    #downloadBtn {
+      margin-top: 10px;
+      background-color: #2196F3;
+    }
+    .delete-btn {
+      background-color: #f44336;
+    }
+    .delete-btn:hover {
+      background-color: #d32f2f;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+  <div id="menu">
+    <h2>DASHBOARD ABSENSI RFID</h2>
+    <button onclick="showForm('registerForm')">📝 Registrasi Kartu</button>
+    <button onclick="showForm('absenForm')">📥 Absensi</button>
+    <button onclick="showForm('rekapTable')">📊 Rekap Absensi</button>
+  </div>
+
+  <div id="registerForm">
+    <h2>Registrasi Kartu</h2>
+    <label>UID:</label>
+    <input type="text" id="reg_uid" readonly>
+    <label>Nama:</label>
+    <input type="text" id="reg_nama">
+    <label>NIM:</label>
+    <input type="text" id="reg_nim">
+    <button onclick="registerCard()">Daftarkan</button>
+    <button onclick="hapusUID()" class="delete-btn">Hapus UID</button>
+  </div>
+
+  <div id="absenForm">
+    <h2>Absensi</h2>
+    <p>Silakan tap kartu untuk melakukan absensi.</p>
+    <label>Pilih Mata Kuliah:</label>
+    <select id="matkulSelect">
+      <option value="Mikrokontroller">Mikrokontroller</option>
+      <option value="Fisika Inti">Fisika Inti</option>
+      <option value="Elektronika Digital">Elektronika Digital</option>
+      <option value="Fisika Zat Padat II">Fisika Zat Padat II</option>
+      <option value="Pengantar Teori Relativitas">Pengantar Teori Relativitas</option>
+    </select>
+    <select id="statusSelect">
+      <option value="hadir">Hadir (Tap Kartu)</option>
+      <option value="izin">Izin</option>
+      <option value="sakit">Sakit</option>
+    </select>
+    <select id="userSelect"></select>
+    <button onclick="manualStatusAbsen()">Set Status Tanpa Tap</button>
+    <p id="absenStatus"></p>
+  </div>
+
+  <div id="rekapTable">
+    <h2>Rekap Absensi</h2>
+    <div class="info" id="tanggalInfo"></div>
+    <label>Pilih Mata Kuliah:</label>
+    <select id="rekapMatkul" onchange="loadTable()">
+      <option value="Mikrokontroller">Mikrokontroller</option>
+      <option value="Fisika Inti">Fisika Inti</option>
+      <option value="Elektronika Digital">Elektronika Digital</option>
+      <option value="Fisika Zat Padat II">Fisika Zat Padat II</option>
+      <option value="Pengantar Teori Relativitas">Pengantar Teori Relativitas</option>
+    </select>
+    <button id="downloadBtn" onclick="downloadRekap()">📥 Download Rekap (CSV)</button>
+    <table id="table">
+      <thead>
+        <tr><th>UID</th><th>Nama</th><th>NIM</th><th>Waktu</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBY8q4a6thf6PpP7O5nEaD8CGPkLbNOfvY",
+      authDomain: "absensi-iot-dcdbb.firebaseapp.com",
+      databaseURL: "https://absensi-iot-dcdbb-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "absensi-iot-dcdbb",
+      storageBucket: "absensi-iot-dcdbb.appspot.com",
+      messagingSenderId: "1049648895778",
+      appId: "1:1049648895778:web:dcca65fa2a7e181b15f77b"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function showForm(id) {
+      document.getElementById("registerForm").style.display = "none";
+      document.getElementById("absenForm").style.display = "none";
+      document.getElementById("rekapTable").style.display = "none";
+      document.getElementById(id).style.display = "block";
+      if (id === 'rekapTable') loadTable();
+      if (id === 'absenForm') {
+        populateUserList();
+        db.ref("temp_uid").remove();
+      }
+    }
+
+    startListening();
+
+    function startListening() {
+      const uidRef = db.ref("temp_uid");
+      uidRef.on("value", function(snapshot) {
+        const uid = snapshot.val();
+        if (!uid) return;
+
+        const isRegisterVisible = document.getElementById("registerForm").style.display === "block";
+        const isAbsenVisible = document.getElementById("absenForm").style.display === "block";
+
+        if (isRegisterVisible) {
+          document.getElementById("reg_uid").value = uid;
+        }
+
+        if (isAbsenVisible) {
+          const matkul = document.getElementById("matkulSelect").value;
+          db.ref("registered_cards/" + uid).once("value", function(data) {
+            if (data.exists()) {
+              const userData = data.val();
+              const waktu = new Date().toISOString().replace("T", " ").substring(0, 19);
+              const today = waktu.split(" ")[0];
+              const absensiRef = db.ref("absensi/" + matkul + "/" + today + "/" + uid);
+              absensiRef.once("value", snap => {
+                if (!snap.exists()) {
+                  absensiRef.set({
+                    uid,
+                    nama: userData.nama,
+                    nim: userData.nim,
+                    waktu,
+                    status: "hadir"
+                  });
+                  showStatus("✅ Absensi berhasil untuk " + userData.nama);
+                } else {
+                  showStatus("");
+                }
+              });
+            } else {
+              showStatus("❌ UID belum terdaftar.");
+            }
+            db.ref("temp_uid").remove();
+          });
+        }
+      });
+    }
+
+    function showStatus(message) {
+      const status = document.getElementById("absenStatus");
+      status.innerText = message;
+      status.style.display = 'block';
+      setTimeout(() => { status.innerText = ""; }, 5000);
+    }
+
+    function registerCard() {
+      const uid = document.getElementById("reg_uid").value;
+      const nama = document.getElementById("reg_nama").value;
+      const nim = document.getElementById("reg_nim").value;
+      if (!uid || !nama || !nim) return alert("Isi semua data!");
+      db.ref("registered_cards/" + uid).set({ nama, nim });
+      alert("Kartu berhasil diregistrasi!");
+      document.getElementById("reg_uid").value = "";
+      document.getElementById("reg_nama").value = "";
+      document.getElementById("reg_nim").value = "";
+    }
+
+    function hapusUID() {
+      const uid = document.getElementById("reg_uid").value;
+      if (!uid) return alert("UID kosong.");
+      if (confirm("Apakah yakin ingin menghapus UID ini?")) {
+        db.ref("registered_cards/" + uid).remove()
+          .then(() => {
+            alert("UID berhasil dihapus.");
+            document.getElementById("reg_uid").value = "";
+            document.getElementById("reg_nama").value = "";
+            document.getElementById("reg_nim").value = "";
+          })
+          .catch(err => alert("Gagal menghapus UID: " + err.message));
+      }
+    }
+
+    function loadTable() {
+      const matkul = document.getElementById("rekapMatkul").value;
+      const tbody = document.querySelector("#table tbody");
+      const info = document.getElementById("tanggalInfo");
+      tbody.innerHTML = "";
+      const now = new Date();
+      const tanggal = now.toLocaleDateString();
+      const bulan = now.toLocaleString('default', { month: 'long' });
+      const tahun = now.getFullYear();
+      const hariKey = now.toISOString().split("T")[0];
+      info.innerText = `Tanggal: ${tanggal} | Bulan: ${bulan} | Tahun: ${tahun}`;
+      db.ref("absensi/" + matkul + "/" + hariKey).once("value", snapshot => {
+        snapshot.forEach(child => {
+          const data = child.val();
+          const row = `
+            <tr>
+              <td>${data.uid}</td>
+              <td>${data.nama}</td>
+              <td>${data.nim}</td>
+              <td>${data.waktu}</td>
+              <td>${data.status || "hadir"}</td>
+              <td><button class="delete-btn" onclick="hapusAbsen('${matkul}', '${hariKey}', '${data.uid}')">Hapus</button></td>
+            </tr>`;
+          tbody.innerHTML += row;
+        });
+      });
+    }
+
+    function hapusAbsen(matkul, tanggal, uid) {
+      if (confirm("Hapus data absensi untuk UID: " + uid + "?")) {
+        db.ref(`absensi/${matkul}/${tanggal}/${uid}`).remove()
+          .then(() => {
+            alert("Data absensi dihapus.");
+            loadTable();
+          })
+          .catch(err => alert("Gagal menghapus data absensi: " + err.message));
+      }
+    }
+
+    function downloadRekap() {
+      const matkul = document.getElementById("rekapMatkul").value;
+      const now = new Date();
+      const hariKey = now.toISOString().split("T")[0];
+      db.ref("absensi/" + matkul + "/" + hariKey).once("value", snapshot => {
+        let csv = 'UID,Nama,NIM,Waktu,Status\n';
+        snapshot.forEach(child => {
+          const d = child.val();
+          csv += `${d.uid},${d.nama},${d.nim},${d.waktu},${d.status || "hadir"}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Rekap_Absensi_${matkul}_${hariKey}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    function populateUserList() {
+      const select = document.getElementById("userSelect");
+      select.innerHTML = "";
+      db.ref("registered_cards").once("value", snapshot => {
+        snapshot.forEach(child => {
+          const uid = child.key;
+          const data = child.val();
+          const option = document.createElement("option");
+          option.value = uid;
+          option.textContent = `${data.nama} (${data.nim})`;
+          select.appendChild(option);
+        });
+      });
+    }
+
+    function manualStatusAbsen() {
+      const uid = document.getElementById("userSelect").value;
+      const status = document.getElementById("statusSelect").value;
+      const matkul = document.getElementById("matkulSelect").value;
+      db.ref("registered_cards/" + uid).once("value", data => {
+        if (data.exists()) {
+          const userData = data.val();
+          const waktu = new Date().toISOString().replace("T", " ").substring(0, 19);
+          const today = waktu.split(" ")[0];
+          db.ref("absensi/" + matkul + "/" + today + "/" + uid).set({
+            uid,
+            nama: userData.nama,
+            nim: userData.nim,
+            waktu,
+            status
+          });
+          showStatus(`✅ Status '${status}' dicatat untuk ${userData.nama}`);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
