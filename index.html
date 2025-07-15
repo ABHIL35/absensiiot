@@ -313,7 +313,7 @@ function startListening() {
         const now = new Date();
         const waktu = now.toLocaleString("sv-SE", { hour12: false }).replace(",", "");
         const today = waktu.split(" ")[0];
-        const absensiRef = db.ref("absensi/" + matkul + "/" + today + "/" + uid);
+        const absensiRef = db.ref("absensi/" + matkul + "/" + uid + "/" + today);
 
         absensiRef.once("value", snap => {
           if (!snap.exists()) {
@@ -513,7 +513,7 @@ function downloadRekap() {
         const now = new Date();
         const waktu = now.toLocaleString("sv-SE", { hour12: false }).replace(",", "");
         const today = waktu.split(" ")[0];
-        db.ref("absensi/" + matkul + "/" + uid + "/" + today).set({
+        db.ref("absensi/" + matkul + "/" + today + "/" + uid).set({
           uid,
           nama: userData.nama,
           nim: userData.nim,
