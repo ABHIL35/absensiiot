@@ -451,26 +451,43 @@ function startListening() {
     }
   }
 
-  function downloadRekap() {
-    const matkul = document.getElementById("rekapMatkul").value;
-    const now = new Date();
-    const hariKey = now.toISOString().split("T")[0];
-    db.ref("absensi/" + matkul + "/" + hariKey).once("value", snapshot => {
-      let csv = 'UID,Nama,NIM,Waktu,Status\n';
-      snapshot.forEach(child => {
-        const d = child.val();
-        csv += `${d.uid},${d.nama},${d.nim},${d.waktu},${d.status || "hadir"}\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Rekap_Absensi_${matkul}_${hariKey}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-  }
+function downloadRekap() {
+  const matkul = document.getElementById("rekapMatkul").value;
+  const now = new Date();
 
+  const hariKey = now.toISOString().split("T")[0]; // yyyy-mm-dd
+  const tanggal = now.getDate().toString().padStart(2, '0');
+  const bulan = now.toLocaleString('default', { month: 'long' });
+  const tahun = now.getFullYear();
+
+  db.ref("absensi/" + matkul + "/" + hariKey).once("value", snapshot => {
+    const data = [];
+    let i = 1;
+
+    data.push([`ABSENSI ${matkul.toUpperCase()} / ${tanggal} / ${bulan.toUpperCase()} / ${tahun}`]);
+
+    data.push([
+      "No", "UID Kartu", "Nama Mahasiswa", "NIM", "Mata Kuliah", "Tanggal", "Waktu Absen", "Status Kehadiran"
+    ]);
+
+    snapshot.forEach(child => {
+      const d = child.val();
+      const waktuSplit = d.waktu.split(" ");
+      const jam = waktuSplit[1] || "-";
+      data.push([
+        i, d.uid, d.nama, d.nim, matkul, hariKey, jam, d.status || "hadir"
+      ]);
+      i++;
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap");
+
+    XLSX.writeFile(workbook, `Rekap_Absensi_${matkul}_${hariKey}.xlsx`);
+  });
+}
+  
   function populateUserList() {
     const select = document.getElementById("userSelect");
     select.innerHTML = "";
@@ -496,7 +513,7 @@ function startListening() {
         const now = new Date();
         const waktu = now.toLocaleString("sv-SE", { hour12: false }).replace(",", "");
         const today = waktu.split(" ")[0];
-        db.ref("absensi/" + matkul + "/" + today + "/" + uid).set({
+        db.ref("absensi/" + matkul + "/" + uid + "/" + today).set({
           uid,
           nama: userData.nama,
           nim: userData.nim,
