@@ -513,7 +513,7 @@ function downloadRekap() {
         const now = new Date();
         const waktu = now.toLocaleString("sv-SE", { hour12: false }).replace(",", "");
         const today = waktu.split(" ")[0];
-        db.ref("absensi/" + matkul + "/" + today + "/" + uid).set({
+        db.ref("absensi/" + matkul + "/" + uid + "/" + today).set({
           uid,
           nama: userData.nama,
           nim: userData.nim,
