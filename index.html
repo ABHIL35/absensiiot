@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Absensi RFID</title>
   <style>
     body {
@@ -61,26 +63,96 @@
     .delete-btn:hover {
       background-color: #d32f2f;
     }
-    @media (max-width: 768px) {
-      body { padding: 10px; }
-      input, select, button { width: 100% !important; }
-      #menu { display: flex; flex-direction: column; }
-      #menu button { margin-bottom: 10px; width: 100%; }
-      table { font-size: 14px; overflow-x: auto; display: block; }
-      th, td { padding: 8px; }
-      #absenForm, #registerForm, #rekapTable { padding: 15px; }
+    
+  @media (max-width: 1024px) {
+      input, select, button {
+        width: 100% !important;
+        font-size: 16px;
+      }
+
+      #menu {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      table {
+        font-size: 15px;
+        overflow-x: auto;
+        display: block;
+      }
+
+      th, td {
+        padding: 8px;
+      }
+
+      #absenForm, #registerForm, #rekapTable {
+        padding: 15px;
+      }
     }
 
-    @media (max-width: 480px) {
-      h2 { font-size: 20px; }
-      label { font-size: 14px; }
-      #downloadBtn, .delete-btn { font-size: 14px; padding: 8px 12px; }
+  @media (max-width: 768px) {
+     body {
+        padding: 10px;
+      }
 
-      table thead { display: none; }
+      h2 {
+        font-size: 22px;
+      }
+
+      input, select, button {
+        width: 100% !important;
+        font-size: 15px;
+      }
+
+      #menu button {
+        margin-bottom: 10px;
+        width: 100%;
+      }
+
+      table {
+        font-size: 14px;
+        overflow-x: auto;
+        display: block;
+      }
+
+      #downloadBtn {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+
+      .delete-btn {
+        font-size: 14px;
+      }
+
+      th, td {
+        padding: 8px;
+      }
+    }
+
+  @media (max-width: 480px) {
+      h2 {
+        font-size: 20px;
+      }
+
+      label {
+        font-size: 14px;
+      }
+
+      #downloadBtn, .delete-btn {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+
+      table thead {
+        display: none;
+      }
+
       table, table tbody, table tr, table td {
         display: block;
         width: 100%;
       }
+
       table tr {
         margin-bottom: 15px;
         border: 1px solid #ccc;
@@ -88,11 +160,13 @@
         background-color: #fff;
         border-radius: 8px;
       }
+
       table td {
         text-align: right;
         position: relative;
         padding-left: 50%;
       }
+
       table td::before {
         content: attr(data-label);
         position: absolute;
@@ -103,11 +177,20 @@
         font-weight: bold;
         text-align: left;
       }
-    }
+
+      #absenForm, #registerForm, #rekapTable {
+        padding: 12px;
+      }
+  }
+      #menu, #registerForm, #absenForm, #rekapTable {
+      transition: all 0.3s ease;
+      max-width: 100%;
+      overflow-x: auto;
+  }
   </style>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div id="loginPage">
@@ -125,7 +208,7 @@
     <button onclick="showForm('registerForm')">📝 Registrasi Kartu</button>
     <button onclick="showForm('absenForm')">📥 Absensi</button>
     <button onclick="showForm('rekapTable')">📊 Rekap Absensi</button>
-    <button onclick="logout()" style="background-color: #f44336;">🚪 Logout</button>
+    <button onclick="logout()" style="background-color: #f44336;">Logout</button>
   </div>
 
   <div id="registerForm">
@@ -138,6 +221,7 @@
     <input type="text" id="reg_nim">
     <button onclick="registerCard()">Daftarkan</button>
     <button onclick="hapusUID()" class="delete-btn">Hapus UID</button>
+    <button onclick="showForm('menu')" style="background-color: gray;">Kembali</button>
   </div>
 
   <div id="absenForm">
@@ -159,6 +243,7 @@
     <select id="userSelect"></select>
     <button onclick="manualStatusAbsen()">Set Status Tanpa Tap</button>
     <p id="absenStatus"></p>
+    <button onclick="showForm('menu')" style="background-color: gray;">Kembali</button>
   </div>
 
   <div id="rekapTable">
@@ -179,9 +264,11 @@
       </thead>
       <tbody></tbody>
     </table>
+    <button onclick="showForm('menu')" style="background-color: gray;">Kembali</button>
   </div>
 
 <script>
+  // Konfigurasi user login
 const adminCredentials = {
   username: "admin",
   password: "admin123"
@@ -193,10 +280,12 @@ function login() {
   const error = document.getElementById("loginError");
 
   if (username === adminCredentials.username && password === adminCredentials.password) {
+    // Login berhasil
     localStorage.setItem("loggedIn", "true");
     document.getElementById("loginPage").style.display = "none";
     document.getElementById("menu").style.display = "block";
   } else {
+    // Login gagal
     error.innerText = "❌ Username atau password salah!";
     error.style.display = "block";
   }
@@ -212,12 +301,13 @@ function checkLogin() {
   }
 }
 
-function logout() {
+// Cek status login saat halaman dibuka
+  checkLogin();
+
+  function logout() {
   localStorage.removeItem("loggedIn");
   location.reload();
 }
-
-checkLogin(); // Panggil saat pertama kali halaman dibuka
 
   const firebaseConfig = {
     apiKey: "AIzaSyBY8q4a6thf6PpP7O5nEaD8CGPkLbNOfvY",
@@ -255,6 +345,7 @@ function startListening() {
 
     const isRegisterVisible = document.getElementById("registerForm").style.display === "block";
     const isAbsenVisible = document.getElementById("absenForm").style.display === "block";
+    const isRekapVisible = document.getElementById("rekapTable").style.display === "block";
     const matkul = localStorage.getItem("selectedMatkul") || "Mikrokontroller";
 
     db.ref("registered_cards/" + uid).once("value", function(data) {
@@ -278,15 +369,18 @@ function startListening() {
           } else {
             if (isAbsenVisible) showStatus("⚠️ " + userData.nama + " sudah absen hari ini.");
           }
+
+          // ⬇️ Jika halaman Rekap terbuka, refresh tabel
+          if (isRekapVisible) {
+            loadTable();
+          }
         });
 
-        // Jika di menu Registrasi dan UID sudah terdaftar, kosongkan kolom UID
         if (isRegisterVisible) {
           document.getElementById("reg_uid").value = "";
         }
 
       } else {
-        // Jika di menu Registrasi dan UID belum terdaftar, tampilkan di input
         if (isRegisterVisible) {
           document.getElementById("reg_uid").value = uid;
         }
@@ -434,7 +528,7 @@ function downloadRekap() {
     XLSX.writeFile(workbook, `Rekap_Absensi_${matkul}_${hariKey}.xlsx`);
   });
 }
-
+  
   function populateUserList() {
     const select = document.getElementById("userSelect");
     select.innerHTML = "";
